@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     debug: bool = False
     TAVILY_API_KEY : str =Field(...)
     GEMINI_API_KEY : str =Field(...)
+    REDIS_URL : str = Field(...)
 
     # Environment variable settings
     model_config = SettingsConfigDict(

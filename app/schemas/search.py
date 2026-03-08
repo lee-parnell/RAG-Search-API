@@ -6,9 +6,7 @@ class SearchRequest(BaseModel):
 
 
 
-class SearchResponse(BaseModel):
-    answer: str
-    sources: list  
+
 
 class Source(BaseModel):
     title: str

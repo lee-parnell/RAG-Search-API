@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Search Engine</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #1a1a26;
+      --border: #2a2a3a;
+      --accent: #6c63ff;
+      --accent2: #ff6584;
+      --accent3: #43e97b;
+      --text: #e8e8f0;
+      --muted: #6b6b80;
+      --glow: rgba(108, 99, 255, 0.15);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      overflow-x: hidden;
+    }
+
+    /* Background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(108,99,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(108,99,255,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px; left: 50%;
+      transform: translateX(-50%);
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(108,99,255,0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Layout */
+    .app {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 40px;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+
+    .logo-text {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: -0.5px;
+    }
+
+    .logo-text span { color: var(--accent); }
+
+    nav { display: flex; gap: 4px; }
+
+    .nav-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover, .nav-btn.active {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    .nav-btn.active { color: var(--accent); }
+
+    /* Main */
+    main { flex: 1; padding: 60px 40px 40px; max-width: 900px; margin: 0 auto; width: 100%; }
+
+    /* Pages */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      margin-bottom: 48px;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 6px 14px;
+      font-size: 12px;
+      color: var(--accent);
+      margin-bottom: 24px;
+    }
+
+    .hero-tag::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--accent3);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(36px, 6vw, 64px);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -2px;
+      margin-bottom: 16px;
+    }
+
+    h1 .highlight {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* Search Box */
+    .search-box {
+      position: relative;
+      animation: fadeUp 0.6s 0.15s ease both;
+    }
+
+    .search-input-wrap {
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 6px 6px 6px 20px;
+      transition: all 0.3s;
+      gap: 12px;
+    }
+
+    .search-input-wrap:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--glow);
+    }
+
+    .search-icon { color: var(--muted); font-size: 18px; flex-shrink: 0; }
+
+    #searchInput {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 15px;
+      padding: 12px 0;
+    }
+
+    #searchInput::placeholder { color: var(--muted); }
+
+    .search-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .mode-toggle {
+      display: flex;
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .mode-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      padding: 5px 10px;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .mode-btn.active {
+      background: var(--accent);
+      color: white;
+    }
+
+    .search-btn {
+      background: linear-gradient(135deg, var(--accent), #8b7fff);
+      border: none;
+      color: white;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 12px 24px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .search-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(108,99,255,0.4); }
+    .search-btn:active { transform: translateY(0); }
+    .search-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .limit-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+      padding: 0 4px;
+    }
+
+    .limit-label { color: var(--muted); font-size: 12px; }
+
+    .limit-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    .limit-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .limit-val {
+      color: var(--accent);
+      font-size: 12px;
+      min-width: 20px;
+      text-align: right;
+    }
+
+    /* Result Area */
+    .result-area {
+      margin-top: 40px;
+      animation: fadeUp 0.4s ease both;
+    }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .result-badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 12px;
+      font-size: 11px;
+      color: var(--accent);
+    }
+
+    .result-query {
+      color: var(--muted);
+      font-size: 12px;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .answer-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      line-height: 1.8;
+      font-size: 14px;
+      color: var(--text);
+      min-height: 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .answer-box::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px; height: 100%;
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      border-radius: 3px 0 0 3px;
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 2px; height: 16px;
+      background: var(--accent);
+      margin-left: 2px;
+      vertical-align: middle;
+      animation: blink 1s infinite;
+    }
+
+    /* Sources */
+    .sources-section { margin-top: 24px; }
+
+    .sources-title {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+    }
+
+    .sources-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 10px;
+    }
+
+    .source-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      text-decoration: none;
+      color: var(--text);
+      transition: all 0.2s;
+      display: block;
+      overflow: hidden;
+    }
+
+    .source-card:hover {
+      border-color: var(--accent);
+      background: var(--surface2);
+      transform: translateY(-2px);
+    }
+
+    .source-num {
+      font-size: 10px;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+
+    .source-title {
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+
+    .source-url {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* History Page */
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    .history-header h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
+
+    .clear-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .clear-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+    .history-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .history-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .history-item:hover {
+      border-color: var(--accent);
+      background: var(--surface2);
+    }
+
+    .history-idx {
+      color: var(--accent);
+      font-size: 11px;
+      min-width: 24px;
+    }
+
+    .history-query {
+      flex: 1;
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .history-arrow { color: var(--muted); font-size: 16px; }
+
+    .empty-state {
+      text-align: center;
+      padding: 80px 0;
+      color: var(--muted);
+    }
+
+    .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
+    .empty-state p { font-size: 14px; }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .loading-dots { display: flex; gap: 4px; }
+
+    .loading-dots span {
+      width: 6px; height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    /* Error */
+    .error-box {
+      background: rgba(255, 101, 132, 0.08);
+      border: 1px solid rgba(255, 101, 132, 0.3);
+      border-radius: 12px;
+      padding: 16px 20px;
+      color: var(--accent2);
+      font-size: 13px;
+      margin-top: 20px;
+    }
+
+    /* Animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      header { padding: 16px 20px; }
+      main { padding: 40px 20px; }
+      .search-controls { flex-wrap: wrap; }
+      .sources-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🔍</div>
+      <div class="logo-text">AI<span>Search</span></div>
+    </div>
+    <nav>
+      <button class="nav-btn active" onclick="showPage('search', this)">Search</button>
+      <button class="nav-btn" onclick="showPage('history', this)">History</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Search Page -->
+    <div class="page active" id="page-search">
+      <div class="hero">
+        <div class="hero-tag">Powered by Gemini + Tavily</div>
+        <h1>Search <span class="highlight">Smarter</span><br/>with AI</h1>
+        <p>Real-time web search with AI-generated answers and citations.</p>
+      </div>
+
+      <div class="search-box">
+        <div class="search-input-wrap">
+          <span class="search-icon">⌕</span>
+          <input id="searchInput" type="text" placeholder="Ask anything..." autocomplete="off"/>
+          <div class="search-controls">
+            <div class="mode-toggle">
+              <button class="mode-btn active" onclick="setMode('stream', this)">Stream</button>
+              <button class="mode-btn" onclick="setMode('normal', this)">Normal</button>
+            </div>
+            <button class="search-btn" id="searchBtn" onclick="doSearch()">Search</button>
+          </div>
+        </div>
+        <div class="limit-row">
+          <span class="limit-label">results:</span>
+          <input type="range" class="limit-slider" id="limitSlider" min="3" max="10" value="5" oninput="document.getElementById('limitVal').textContent = this.value"/>
+          <span class="limit-val" id="limitVal">5</span>
+        </div>
+      </div>
+
+      <div class="result-area" id="resultArea" style="display:none;"></div>
+    </div>
+
+    <!-- History Page -->
+    <div class="page" id="page-history">
+      <div class="history-header">
+        <h2>Search History</h2>
+        <button class="clear-btn" onclick="loadHistory()">↻ Refresh</button>
+      </div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const API = 'http://127.0.0.1:8000';
+  let mode = 'stream';
+
+  function setMode(m, btn) {
+    mode = m;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  function showPage(name, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    btn.classList.add('active');
+    if (name === 'history') loadHistory();
+  }
+
+  document.getElementById('searchInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doSearch();
+  });
+
+  async function doSearch() {
+    const query = document.getElementById('searchInput').value.trim();
+    const limit = parseInt(document.getElementById('limitSlider').value);
+    if (!query) return;
+
+    const btn = document.getElementById('searchBtn');
+    btn.disabled = true;
+    btn.textContent = '...';
+
+    const area = document.getElementById('resultArea');
+    area.style.display = 'block';
+    area.innerHTML = `
+      <div class="result-header">
+        <div class="result-badge">AI Answer</div>
+        <div class="result-query">${escHtml(query)}</div>
+      </div>
+      <div class="answer-box">
+        <div class="loading">
+          <div class="loading-dots"><span></span><span></span><span></span></div>
+          <span>Searching the web...</span>
+        </div>
+      </div>`;
+
+    try {
+      if (mode === 'stream') {
+        await doStream(query, limit, area);
+      } else {
+        await doNormal(query, limit, area);
+      }
+    } catch (err) {
+      area.innerHTML += `<div class="error-box">⚠ ${escHtml(err.message)}</div>`;
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Search';
+  }
+
+  async function doStream(query, limit, area) {
+    const res = await fetch(`${API}/search/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, limit })
+    });
+
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
+    const answerBox = area.querySelector('.answer-box');
+    answerBox.innerHTML = '<span class="cursor"></span>';
+    let fullText = '';
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const text = decoder.decode(value);
+      const lines = text.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const chunk = line.slice(6);
+          if (chunk === '[DONE]') {
+            answerBox.querySelector('.cursor')?.remove();
+            break;
+          }
+          fullText += chunk;
+          answerBox.innerHTML = escHtml(fullText).replace(/\n/g, '<br>') + '<span class="cursor"></span>';
+        }
+      }
+    }
+  }
+
+  async function doNormal(query, limit, area) {
+    const res = await fetch(`${API}/search/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, limit })
+    });
+
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const data = await res.json();
+
+    const answerBox = area.querySelector('.answer-box');
+    answerBox.innerHTML = escHtml(data.answer).replace(/\n/g, '<br>');
+
+    if (data.sources?.length) {
+      renderSources(data.sources, area);
+    }
+  }
+
+  function renderSources(sources, area) {
+    const sec = document.createElement('div');
+    sec.className = 'sources-section';
+    sec.innerHTML = `<div class="sources-title">Sources</div><div class="sources-grid">${
+      sources.map((s, i) => `
+        <a class="source-card" href="${escHtml(s.url)}" target="_blank" rel="noopener">
+          <div class="source-num">Result ${i + 1}</div>
+          <div class="source-title">${escHtml(s.title)}</div>
+          <div class="source-url">${escHtml(s.url)}</div>
+        </a>`).join('')
+    }</div>`;
+    area.appendChild(sec);
+  }
+
+  async function loadHistory() {
+    const list = document.getElementById('historyList');
+    list.innerHTML = `<div class="loading"><div class="loading-dots"><span></span><span></span><span></span></div><span>Loading...</span></div>`;
+    try {
+      const res = await fetch(`${API}/history/`);
+      const data = await res.json();
+      const searches = data.searches || [];
+      if (!searches.length) {
+        list.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><p>No searches yet.</p></div>`;
+        return;
+      }
+      list.innerHTML = searches.map((q, i) => `
+        <div class="history-item" onclick="searchFromHistory('${escHtml(q).replace(/'/g, "\\'")}')">
+          <div class="history-idx">#${i + 1}</div>
+          <div class="history-query">${escHtml(q)}</div>
+          <div class="history-arrow">→</div>
+        </div>`).join('');
+    } catch {
+      list.innerHTML = `<div class="error-box">⚠ Could not load history. Is the server running?</div>`;
+    }
+  }
+
+  function searchFromHistory(query) {
+    document.getElementById('searchInput').value = query;
+    showPage('search', document.querySelector('.nav-btn'));
+    doSearch();
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>
