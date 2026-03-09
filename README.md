@@ -1,6 +1,8 @@
 # 🔍 AI Smart Search Engine
 
-> A production-ready AI-powered search API that retrieves real-time web results and generates intelligent, cited answers using Google Gemini — with streaming support, Redis caching, and a clean frontend.
+> Stop browsing. Start knowing.
+Ask a question — get a cited, intelligent answer in seconds. No tab-switching, no skimming. Just answers.
+Built with FastAPI + Google Gemini + Tavily. Streams like Perplexity. Deploys with one Docker command.
 
 ![Python](https://img.shields.io/badge/Python-3.12-blue?style=flat-square&logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.135-009688?style=flat-square&logo=fastapi)
