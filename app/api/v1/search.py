@@ -9,6 +9,7 @@ from .deps import get_llm_service , get_search_service
 from ...services.llm_service import LLMService 
 from...services.search_service import SearchService
 from ...api.v1.deps import limiter
+from ...ml.classifier_service import classify_query
 
 
 
@@ -40,7 +41,9 @@ async def search(request: Request,
         if not search_results:
             return SearchResponse(answer="I apologize, but I couldn't find any relevant information based on your query.", sources=[])
         results_list = search_results.get("results", [])
-        answer = await llm_service.generate_answer(search_request.query, results_list)
+        
+        intent = classify_query(search_request.query)
+        answer = await llm_service.generate_answer(search_request.query, results_list, intent=intent)
         await redis_.set(search_request.query , answer , ex= 3600)
         sources = [Source(title=r.get("title",""), url=r.get("url","")) for r in results_list]
         await redis_.lpush("search_history" , search_request.query)
@@ -71,9 +74,11 @@ async def search_stream(
     search_results = await search_svc.search(search_request.query)
     results_list = search_results.get("results", [])
     
+    intent = classify_query(search_request.query)
+
     async def event_generator():
-        full_answer = ""  
-        async for chunk in llm_svc.generate_answer_stream(search_request.query , results_list):
+        full_answer = ""
+        async for chunk in llm_svc.generate_answer_stream(search_request.query, results_list, intent=intent):
             full_answer += chunk 
             yield f"data: {chunk}\n\n"
     
